@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script src="../build/react.js"></script>
+    <script src="../build/react-dom.js"></script>
+    <script src="../build/browser.min.js"></script>
+    <style type="text/css">
+        html{
+          display: inline-block;
+        }
+        .container{
+          height:500px;
+          width:100%;
+          display: inline-block;
+          /*left:50%;
+          top:50%;
+          transform: translate(-50%, -50%)*/
+          text-align: center;
+        }
+        #header{
+          height:50px;
+          width:100%;
+        }
+        .tab{
+          position: relative;
+          height:50px;
+          width:33%;
+          display: inline-block;
+          border:solid 1px #ddd;
+          background-color: blue;
+          
+        }
+        .tabContent{
+          position: relative;
+          display: inline-block;
+          color:#fff;
+          /*left:50%;*/
+          top:50%;
+          transform: translate(-50%, -50%)
+        }
+        .choosed{
+          background-color: red;
+        }
+        #checkedItmes{
+          display: inline-block;
+          height:80px;
+          width:100%;
+          border:solid 1px blue;
+          margin-top: 10px;
+        }
+        button{
+          height:30px;
+          width:120px;
+          background-color: #1d2fb4d1;
+          color:#fff;
+          border-radius: 8px;
+          margin-left: 20px;
+          margin-right: 20px;
+          border:none;
+        }
+        button:hover{
+          background-color: #1d2fb494;
+        }
+    </style>
+  </head>
+  <body>
+    <div id="example"></div>
+    <script type="text/babel">
+    var data=[];
+    //A  B  C tab组件 
+    var Tab = React.createClass({
+        render: function () {
+          var chosedTab = this.props.tab;
+          return (
+            <div className={chosedTab==this.props.id?"choosed tab":"tab"} onClick={this.props.handleClick} data-index={this.props.id}>
+            <a  className="tabContent">{this.props.id}</a>
+            </div>
+          );
+        }
+      });
+    //单条信息组件
+    var Item = React.createClass({
+       getInitialState: function() {
+          return {ownCheckState: false};//item的checbox属性
+        },
+        handleClick:function(){
+          var state = this.state.ownCheckState;
+          this.setState({ownCheckState:!state},console.log(state));
+          const _this = this;
+          this.props.updateCount(function(count){
+            console.log(count);
+            var result = count;
+               if(state){
+                  for(let i=0; i<count.length; i++){
+                    if(result[i]==_this.props.id){
+                      result.splice(i,1);
+                      break;
+                    }
+                  }
+               }else{
+                  result.push(_this.props.id);
+               }
+               return result;
+            });
+          this.props.updateClickFromItem();
+          if(this.props.chooseAll){
+            //全选状态下点击后全不选
+            this.props.clearClickAll();
+          }
+        },
+        componentWillMount:function(){
+          if(this.props.chooseAll){
+            this.setState({ownCheckState:true});
+          }
+        },
+        componentWillReceiveProps:function(nextprops){
+          if(nextprops.chooseAll){
+            this.setState({ownCheckState:true});
+          }else if(!nextprops.chooseAll&&this.props.chooseAll&&!nextprops.clickFromItem){
+            this.setState({ownCheckState:false, count:[]});
+          }
+
+        },
+        render:function(){
+          var ownCheckState = this.state.ownCheckState;
+          var chooseAll = this.props.chooseAll;
+          var checked = ownCheckState||chooseAll;
+          return (<div>
+              <input type="checkbox" checked={checked} onClick={this.handleClick}/>
+              <span>{this.props.id}</span>
+            </div>)
+        }
+    });
+
+    var ChooseAll = React.createClass({
+        render:function(){
+          var checked = this.props.chooseAll;
+          return (<div>
+              <input id="all" type="checkbox" checked={checked} onClick={this.props.clickAll}/>
+              <span>全选</span>
+            </div>)
+        }
+    });
+
+
+    //查看页面组件
+    var Page = React.createClass({
+      getInitialState: function() {
+          return {data: [],//已加载的item数据
+                  tab:'',//选中的tab页
+                  chooseAll: false,//是否全选
+                  clickFromItem:false,//是否是item的checkbox点击
+                  count:[],//选中的item
+                  page:1//总共加载的页数
+          };
+        },
+      handleClick:function(e){
+          var str = e.currentTarget.getAttribute("data-index");
+          var page = this.state.page;
+          console.log(str);
+          const _this = this;
+          //获取页面数据
+          setTimeout(function(){
+              var tmpData = [];
+              for(let i=0; i<7; i++){
+                tmpData.push(str+(i*page).toString());
+              }
+              _this.setState({
+                  data:tmpData,
+                  tab:str,
+                  chooseAll:false,
+                  count:[]
+              });
+          },100);
+      },
+      //全选checkbox的点击
+      clickAll:function(e){
+        const _this = this;
+          var chooseState = !this.state.chooseAll;
+          var count = [];
+          var page = this.state.page;
+          //更新选中项
+          if(chooseState){
+            for(let i=0; i<page*7;i++){
+              count.push(_this.state.tab+i.toString());
+            }
+          }else{
+            count = this.state.count;
+          }
+          this.setState({
+            chooseAll:chooseState,
+            clickFromItem:false,
+            count:count
+          }); 
+      },
+      //清除全选
+      clearClickAll:function(){
+          this.setState({chooseAll:false});
+      },
+      //来自单条的点击
+      updateClickFromItem:function(){
+          this.setState({
+            clickFromItem:true
+          })
+      },
+      //更新选中的条目的
+      updateCount:function(callback){
+         var count = this.state.count;
+         var finalCount = callback(count);
+         if(count.length==this.state.page*7){
+            this.setState({chooseAll:true,count: finalCount});
+         }else{
+            this.setState({count: finalCount}) 
+         }
+      },
+      //选中条目的输出
+      getChecked:function(){
+        console.log("click");
+        console.log(this.state.count);
+        var checkedItmes = document.getElementById("checkedItmes");
+        checkedItmes.innerText = this.state.count.toString();
+      },
+      //更多数据加载
+      getMore:function(e){
+        const _this = this;
+        var change = e.currentTarget.getAttribute("data-value");
+        var page = this.state.page;
+        var data = this.state.data;
+        var start = page*7;
+          setTimeout(function(){
+            var count = _this.state.count;
+            for(let i=0; i<7;i++){
+              data.push(_this.state.tab+(start+i).toString());
+              //如果有全选，新加载项加入选中数组count
+              if(_this.state.chooseAll){
+                count.push(_this.state.tab+(start+i).toString());
+              }
+            }
+            _this.setState({page:page+1,data:data,count:count});
+          },100)
+      },
+      render:function(){
+        var arr = this.state.data;
+        var chooseAll = this.state.chooseAll;
+        var clickFromItem = this.state.clickFromItem;
+        var count = this.state.count;
+        var tab = this.state.tab;
+        const _this = this;
+        return (
+          <div className="container">
+              <div id="header">
+                <Tab id="A"  handleClick={this.handleClick} tab={tab}/>
+                <Tab id="B"  handleClick={this.handleClick} tab={tab}/>
+                <Tab id="C"  handleClick={this.handleClick} tab={tab}/>
+              </div>
+              <div id="content">
+                  <ChooseAll clickAll={this.clickAll} chooseAll={chooseAll} count={count}/>
+                  {arr.length==0?"":arr.map(function(element){
+                      return (<Item key={element} id={element} 
+                        clearClickAll={_this.clearClickAll} 
+                        chooseAll={chooseAll} 
+                        clickFromItem={clickFromItem}
+                        count={count}
+                        updateClickFromItem={_this.updateClickFromItem}
+                        updateCount={_this.updateCount}/>);
+                  })}
+              </div>
+              <button onClick={this.getChecked}>当前选中项</button>
+              <button onClick={this.getMore} data-value={1}>加载更多</button>
+              <text id="checkedItmes"></text>
+          </div>);
+      }
+    });
+      ReactDOM.render(<Page/>, document.getElementById('example'));
+    </script>
+  </body>
+</html>
